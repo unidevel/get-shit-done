@@ -65,6 +65,7 @@ const hasCodex = args.includes('--codex');
 const hasCopilot = args.includes('--copilot');
 const hasAntigravity = args.includes('--antigravity');
 const hasCursor = args.includes('--cursor');
+const hasBob = args.includes('--bob');
 const hasBoth = args.includes('--both'); // Legacy flag, keeps working
 const hasAll = args.includes('--all');
 const hasUninstall = args.includes('--uninstall') || args.includes('-u');
@@ -72,7 +73,7 @@ const hasUninstall = args.includes('--uninstall') || args.includes('-u');
 // Runtime selection - can be set by flags or interactive prompt
 let selectedRuntimes = [];
 if (hasAll) {
-  selectedRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor'];
+  selectedRuntimes = ['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'bob'];
 } else if (hasBoth) {
   selectedRuntimes = ['claude', 'opencode'];
 } else {
@@ -83,6 +84,7 @@ if (hasAll) {
   if (hasCopilot) selectedRuntimes.push('copilot');
   if (hasAntigravity) selectedRuntimes.push('antigravity');
   if (hasCursor) selectedRuntimes.push('cursor');
+  if (hasBob) selectedRuntimes.push('bob');
 }
 
 // WSL + Windows Node.js detection
@@ -127,6 +129,7 @@ function getDirName(runtime) {
   if (runtime === 'codex') return '.codex';
   if (runtime === 'antigravity') return '.agent';
   if (runtime === 'cursor') return '.cursor';
+  if (runtime === 'bob') return '.bob';
   return '.claude';
 }
 
@@ -155,6 +158,7 @@ function getConfigDirFromHome(runtime, isGlobal) {
     return "'.gemini', 'antigravity'";
   }
   if (runtime === 'cursor') return "'.cursor'";
+  if (runtime === 'bob') return "'.bob'";
   return "'.claude'";
 }
 
@@ -252,6 +256,16 @@ function getGlobalDir(runtime, explicitDir = null) {
     return path.join(os.homedir(), '.cursor');
   }
 
+  if (runtime === 'bob') {
+    // Bob-Shell: --config-dir > BOB_CONFIG_DIR > ~/.bob
+    if (explicitDir) {
+      return expandTilde(explicitDir);
+    }
+    if (process.env.BOB_CONFIG_DIR) {
+      return expandTilde(process.env.BOB_CONFIG_DIR);
+    }
+    return path.join(os.homedir(), '.bob');
+  }
 
   // Claude Code: --config-dir > CLAUDE_CONFIG_DIR > ~/.claude
   if (explicitDir) {
@@ -273,7 +287,7 @@ const banner = '\n' +
   '\n' +
   '  Get Shit Done ' + dim + 'v' + pkg.version + reset + '\n' +
   '  A meta-prompting, context engineering and spec-driven\n' +
-  '  development system for Claude Code, OpenCode, Gemini, Codex, Copilot, Antigravity, and Cursor by TÂCHES.\n';
+  '  development system for Claude Code, OpenCode, Gemini, Codex, Copilot, Antigravity, Cursor and Bob by TÂCHES.\n';
 
 // Parse --config-dir argument
 function parseConfigDirArg() {
@@ -311,7 +325,71 @@ if (hasUninstall) {
 
 // Show help if requested
 if (hasHelp) {
-  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--codex${reset}                   Install for Codex only\n    ${cyan}--copilot${reset}                 Install for Copilot only\n    ${cyan}--antigravity${reset}             Install for Antigravity only\n    ${cyan}--cursor${reset}                  Install for Cursor only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for Codex globally${reset}\n    npx get-shit-done-cc --codex --global\n\n    ${dim}# Install for Copilot globally${reset}\n    npx get-shit-done-cc --copilot --global\n\n    ${dim}# Install for Copilot locally${reset}\n    npx get-shit-done-cc --copilot --local\n\n    ${dim}# Install for Antigravity globally${reset}\n    npx get-shit-done-cc --antigravity --global\n\n    ${dim}# Install for Antigravity locally${reset}\n    npx get-shit-done-cc --antigravity --local\n\n    ${dim}# Install for Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global\n\n    ${dim}# Install for Cursor locally${reset}\n    npx get-shit-done-cc --cursor --local\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --codex --global --config-dir ~/.codex-work\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR / CODEX_HOME / COPILOT_CONFIG_DIR / ANTIGRAVITY_CONFIG_DIR / CURSOR_CONFIG_DIR environment variables.\n`);
+console.log(`
+  ${yellow}Usage:${reset} npx get-shit-done-cc [options]
+
+  ${yellow}Options:${reset}
+    ${cyan}-g, --global${reset}              Install globally (to config directory)
+    ${cyan}-l, --local${reset}               Install locally (to current directory)
+    ${cyan}--claude${reset}                  Install for Claude Code only
+    ${cyan}--opencode${reset}                Install for OpenCode only
+    ${cyan}--gemini${reset}                  Install for Gemini only
+    ${cyan}--codex${reset}                   Install for Codex only
+    ${cyan}--copilot${reset}                 Install for Copilot only
+    ${cyan}--antigravity${reset}             Install for Antigravity only
+    ${cyan}--cursor${reset}                  Install for Cursor only
+    ${cyan}--bob${reset}                     Install for Bob only
+    ${cyan}--all${reset}                     Install for all runtimes
+    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)
+    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory
+    ${cyan}-h, --help${reset}                Show this help message
+    ${cyan}--force-statusline${reset}        Replace existing statusline config
+
+  ${yellow}Examples:${reset}
+    ${dim}# Interactive install (prompts for runtime and location)${reset}
+    npx get-shit-done-cc
+
+    ${dim}# Install for Claude Code globally${reset}
+    npx get-shit-done-cc --claude --global
+
+    ${dim}# Install for Gemini globally${reset}
+    npx get-shit-done-cc --gemini --global
+
+    ${dim}# Install for Codex globally${reset}
+    npx get-shit-done-cc --codex --global
+
+    ${dim}# Install for Copilot globally${reset}
+    npx get-shit-done-cc --copilot --global
+
+    ${dim}# Install for Copilot locally${reset}
+    npx get-shit-done-cc --copilot --local
+
+    ${dim}# Install for Antigravity globally${reset}
+    npx get-shit-done-cc --antigravity --global
+
+    ${dim}# Install for Antigravity locally${reset}
+    npx get-shit-done-cc --antigravity --local
+
+    ${dim}# Install for Cursor globally${reset}
+    npx get-shit-done-cc --cursor --global
+
+    ${dim}# Install for Cursor locally${reset}
+    npx get-shit-done-cc --cursor --local
+
+    ${dim}# Install for Bob globally${reset}
+    npx get-shit-done-cc --bob --global
+
+    ${dim}# Install for Bob locally${reset}
+    npx get-shit-done-cc --bob --local
+
+    ${dim}# Install for all runtimes globally${reset}
+    npx get-shit-done-cc --all --global
+
+  ${yellow}Notes:${reset}
+    The --config-dir option is useful when you have multiple configurations.
+    It takes priority over CLAUDE_CONFIG_DIR / GEMINI_CONFIG_DIR / CODEX_HOME / COPILOT_CONFIG_DIR / ANTIGRAVITY_CONFIG_DIR environment variables.
+`);
+
   process.exit(0);
 }
 
@@ -3260,15 +3338,18 @@ function promptRuntime(callback) {
   ${cyan}5${reset}) Copilot      ${dim}(~/.copilot)${reset}
   ${cyan}6${reset}) Antigravity  ${dim}(~/.gemini/antigravity)${reset}
   ${cyan}7${reset}) Cursor       ${dim}(~/.cursor)${reset}
-  ${cyan}8${reset}) All
+  ${cyan}8${reset}) Bob          ${dim}(~/.bob)${reset}
+  ${cyan}9${reset}) All
 `);
 
   rl.question(`  Choice ${dim}[1]${reset}: `, (answer) => {
     answered = true;
     rl.close();
     const choice = answer.trim() || '1';
-    if (choice === '8') {
-      callback(['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor']);
+    if (choice === '9') {
+      callback(['claude', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'bob']);
+    } else if (choice === '8') {
+      callback(['bob']);
     } else if (choice === '7') {
       callback(['cursor']);
     } else if (choice === '6') {
