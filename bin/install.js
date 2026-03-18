@@ -191,6 +191,7 @@ const hasQwen = args.includes('--qwen');
 const hasHermes = args.includes('--hermes');
 const hasCodebuddy = args.includes('--codebuddy');
 const hasCline = args.includes('--cline');
+const hasBob = args.includes('--bob');
 const hasBoth = args.includes('--both'); // Legacy flag, keeps working
 const hasAll = args.includes('--all');
 const hasUninstall = args.includes('--uninstall') || args.includes('-u');
@@ -228,7 +229,7 @@ if (hasSdk && hasNoSdk) {
 // Runtime selection - can be set by flags or interactive prompt
 let selectedRuntimes = [];
 if (hasAll) {
-  selectedRuntimes = ['claude', 'kilo', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment', 'trae', 'qwen', 'hermes', 'codebuddy', 'cline'];
+  selectedRuntimes = ['claude', 'kilo', 'opencode', 'gemini', 'codex', 'copilot', 'antigravity', 'cursor', 'windsurf', 'augment', 'trae', 'qwen', 'hermes', 'codebuddy', 'cline', 'bob'];
 } else if (hasBoth) {
   selectedRuntimes = ['claude', 'opencode'];
 } else {
@@ -247,6 +248,7 @@ if (hasAll) {
   if (hasHermes) selectedRuntimes.push('hermes');
   if (hasCodebuddy) selectedRuntimes.push('codebuddy');
   if (hasCline) selectedRuntimes.push('cline');
+  if (hasBob) selectedRuntimes.push('bob');
 }
 
 // WSL + Windows Node.js detection
@@ -299,6 +301,7 @@ function getDirName(runtime) {
   if (runtime === 'hermes') return '.hermes';
   if (runtime === 'codebuddy') return '.codebuddy';
   if (runtime === 'cline') return '.cline';
+  if (runtime === 'bob') return '.bob';
   return '.claude';
 }
 
@@ -335,6 +338,7 @@ function getConfigDirFromHome(runtime, isGlobal) {
   if (runtime === 'hermes') return "'.hermes'";
   if (runtime === 'codebuddy') return "'.codebuddy'";
   if (runtime === 'cline') return "'.cline'";
+  if (runtime === 'bob') return "'.bob'";
   return "'.claude'";
 }
 
@@ -542,6 +546,17 @@ function getGlobalDir(runtime, explicitDir = null) {
     return path.join(os.homedir(), '.cline');
   }
 
+  if (runtime === 'bob') {
+    // Bob-Shell: --config-dir > BOB_CONFIG_DIR > ~/.bob
+    if (explicitDir) {
+      return expandTilde(explicitDir);
+    }
+    if (process.env.BOB_CONFIG_DIR) {
+      return expandTilde(process.env.BOB_CONFIG_DIR);
+    }
+    return path.join(os.homedir(), '.bob');
+  }
+
   // Claude Code: --config-dir > CLAUDE_CONFIG_DIR > ~/.claude
   if (explicitDir) {
     return expandTilde(explicitDir);
@@ -562,7 +577,7 @@ const banner = '\n' +
   '\n' +
   '  Get Shit Done ' + dim + 'v' + pkg.version + reset + '\n' +
   '  A meta-prompting, context engineering and spec-driven\n' +
-  '  development system for Claude Code, OpenCode, Gemini, Kilo, Codex, Copilot, Antigravity, Cursor, Windsurf, Augment, Trae, Qwen Code, Hermes Agent, Cline and CodeBuddy by TÂCHES.\n';
+  '  development system for Claude Code, OpenCode, Gemini, Kilo, Codex, Copilot, Antigravity, Cursor, Windsurf, Augment, Trae, Qwen Code, Hermes Agent, Cline, CodeBuddy and Bob by TÂCHES.\n';
 
 // Parse --config-dir argument
 function parseConfigDirArg() {
@@ -600,7 +615,157 @@ if (hasUninstall) {
 
 // Show help if requested
 if (hasHelp) {
-  console.log(`  ${yellow}Usage:${reset} npx get-shit-done-cc [options]\n\n  ${yellow}Options:${reset}\n    ${cyan}-g, --global${reset}              Install globally (to config directory)\n    ${cyan}-l, --local${reset}               Install locally (to current directory)\n    ${cyan}--claude${reset}                  Install for Claude Code only\n    ${cyan}--opencode${reset}                Install for OpenCode only\n    ${cyan}--gemini${reset}                  Install for Gemini only\n    ${cyan}--kilo${reset}                    Install for Kilo only\n    ${cyan}--codex${reset}                   Install for Codex only\n    ${cyan}--copilot${reset}                 Install for Copilot only\n    ${cyan}--antigravity${reset}             Install for Antigravity only\n    ${cyan}--cursor${reset}                  Install for Cursor only\n    ${cyan}--windsurf${reset}                Install for Windsurf only\n    ${cyan}--augment${reset}                 Install for Augment only\n    ${cyan}--trae${reset}                    Install for Trae only\n    ${cyan}--qwen${reset}                    Install for Qwen Code only\n    ${cyan}--hermes${reset}                  Install for Hermes Agent only\n    ${cyan}--cline${reset}                   Install for Cline only\n    ${cyan}--codebuddy${reset}              Install for CodeBuddy only\n    ${cyan}--all${reset}                     Install for all runtimes\n    ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)\n    ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory\n    ${cyan}-h, --help${reset}                Show this help message\n    ${cyan}--force-statusline${reset}        Replace existing statusline config\n    ${cyan}--portable-hooks${reset}          Emit \$HOME-relative hook paths in settings.json\n                              (for WSL/Docker bind-mount setups; also GSD_PORTABLE_HOOKS=1)\n    ${cyan}--profile=<name>${reset}         Install a named skill profile. Profiles:\n                              core     — 7 main-loop skills incl. phase (~130 desc tokens)\n                              standard — ~13 skills incl. phase, review, config (~700)\n                              full     — all 66 skills (default)\n                              Composable: --profile=core,audit installs union of closures.\n                              Profile is persisted and respected by \`gsd update\`.\n    ${cyan}--minimal${reset}                 Alias for --profile=core (back-compat).\n                              Cuts cold-start overhead from ~12k tokens to ~700.\n                              Alias: --core-only.\n\n  ${yellow}Examples:${reset}\n    ${dim}# Interactive install (prompts for runtime and location)${reset}\n    npx get-shit-done-cc\n\n    ${dim}# Install for Claude Code globally${reset}\n    npx get-shit-done-cc --claude --global\n\n    ${dim}# Install for Gemini globally${reset}\n    npx get-shit-done-cc --gemini --global\n\n    ${dim}# Install for Kilo globally${reset}\n    npx get-shit-done-cc --kilo --global\n\n    ${dim}# Install for Codex globally${reset}\n    npx get-shit-done-cc --codex --global\n\n    ${dim}# Install for Copilot globally${reset}\n    npx get-shit-done-cc --copilot --global\n\n    ${dim}# Install for Copilot locally${reset}\n    npx get-shit-done-cc --copilot --local\n\n    ${dim}# Install for Antigravity globally${reset}\n    npx get-shit-done-cc --antigravity --global\n\n    ${dim}# Install for Antigravity locally${reset}\n    npx get-shit-done-cc --antigravity --local\n\n    ${dim}# Install for Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global\n\n    ${dim}# Install for Cursor locally${reset}\n    npx get-shit-done-cc --cursor --local\n\n    ${dim}# Install for Windsurf globally${reset}\n    npx get-shit-done-cc --windsurf --global\n\n    ${dim}# Install for Windsurf locally${reset}\n    npx get-shit-done-cc --windsurf --local\n\n    ${dim}# Install for Augment globally${reset}\n    npx get-shit-done-cc --augment --global\n\n    ${dim}# Install for Augment locally${reset}\n    npx get-shit-done-cc --augment --local\n\n    ${dim}# Install for Trae globally${reset}\n    npx get-shit-done-cc --trae --global\n\n    ${dim}# Install for Trae locally${reset}\n    npx get-shit-done-cc --trae --local\n\n    ${dim}# Install for Hermes Agent globally${reset}\n    npx get-shit-done-cc --hermes --global\n\n    ${dim}# Install for Hermes Agent locally${reset}\n    npx get-shit-done-cc --hermes --local\n\n    ${dim}# Install for Cline locally${reset}\n    npx get-shit-done-cc --cline --local\n\n    ${dim}# Install for CodeBuddy globally${reset}\n    npx get-shit-done-cc --codebuddy --global\n\n    ${dim}# Install for CodeBuddy locally${reset}\n    npx get-shit-done-cc --codebuddy --local\n\n    ${dim}# Install for all runtimes globally${reset}\n    npx get-shit-done-cc --all --global\n\n    ${dim}# Install to custom config directory${reset}\n    npx get-shit-done-cc --kilo --global --config-dir ~/.kilo-work\n\n    ${dim}# Install to current project only${reset}\n    npx get-shit-done-cc --claude --local\n\n    ${dim}# Uninstall GSD from Cursor globally${reset}\n    npx get-shit-done-cc --cursor --global --uninstall\n\n  ${yellow}Notes:${reset}\n    The --config-dir option is useful when you have multiple configurations.\n    It takes priority over CLAUDE_CONFIG_DIR / OPENCODE_CONFIG_DIR / GEMINI_CONFIG_DIR / KILO_CONFIG_DIR / CODEX_HOME / COPILOT_CONFIG_DIR / ANTIGRAVITY_CONFIG_DIR / CURSOR_CONFIG_DIR / WINDSURF_CONFIG_DIR / AUGMENT_CONFIG_DIR / TRAE_CONFIG_DIR / QWEN_CONFIG_DIR / HERMES_HOME / CLINE_CONFIG_DIR / CODEBUDDY_CONFIG_DIR environment variables.\n`);
+  console.log(`
+    ${yellow}Usage:${reset}
+      npx get-shit-done-cc [options]
+
+    ${yellow}Options:${reset}
+      ${cyan}-g, --global${reset}              Install globally (to config directory)
+      ${cyan}-l, --local${reset}               Install locally (to current directory)
+      ${cyan}--claude${reset}                  Install for Claude Code only
+      ${cyan}--opencode${reset}                Install for OpenCode only
+      ${cyan}--gemini${reset}                  Install for Gemini only
+      ${cyan}--kilo${reset}                    Install for Kilo only
+      ${cyan}--codex${reset}                   Install for Codex only
+      ${cyan}--copilot${reset}                 Install for Copilot only
+      ${cyan}--antigravity${reset}             Install for Antigravity only
+      ${cyan}--cursor${reset}                  Install for Cursor only
+      ${cyan}--windsurf${reset}                Install for Windsurf only
+      ${cyan}--augment${reset}                 Install for Augment only
+      ${cyan}--trae${reset}                    Install for Trae only
+      ${cyan}--qwen${reset}                    Install for Qwen Code only
+      ${cyan}--hermes${reset}                  Install for Hermes Agent only
+      ${cyan}--cline${reset}                   Install for Cline only
+      ${cyan}--codebuddy${reset}               Install for CodeBuddy only
+      ${cyan}--all${reset}                     Install for all runtimes
+      ${cyan}-u, --uninstall${reset}           Uninstall GSD (remove all GSD files)
+      ${cyan}-c, --config-dir <path>${reset}   Specify custom config directory
+      ${cyan}-h, --help${reset}                Show this help message
+      ${cyan}--force-statusline${reset}        Replace existing statusline config
+
+      ${cyan}--portable-hooks${reset}
+                                Emit $HOME-relative hook paths in settings.json
+                                (for WSL/Docker bind-mount setups;
+                                also GSD_PORTABLE_HOOKS=1)
+
+      ${cyan}--profile=<name>${reset}
+                                Install a named skill profile. Profiles:
+                                core     — 7 main-loop skills incl. phase (~130 desc tokens)
+                                standard — ~13 skills incl. phase, review, config (~700)
+                                full     — all 66 skills (default)
+
+                                Composable:
+                                --profile=core,audit installs union of closures.
+
+                                Profile is persisted and respected by \`gsd update\`.
+
+      ${cyan}--minimal${reset}
+                                Alias for --profile=core (back-compat).
+                                Cuts cold-start overhead from ~12k tokens to ~700.
+                                Alias: --core-only.
+
+    ${yellow}Examples:${reset}
+
+      ${dim}# Interactive install (prompts for runtime and location)${reset}
+      npx get-shit-done-cc
+
+      ${dim}# Install for Claude Code globally${reset}
+      npx get-shit-done-cc --claude --global
+
+      ${dim}# Install for Gemini globally${reset}
+      npx get-shit-done-cc --gemini --global
+
+      ${dim}# Install for Kilo globally${reset}
+      npx get-shit-done-cc --kilo --global
+
+      ${dim}# Install for Codex globally${reset}
+      npx get-shit-done-cc --codex --global
+
+      ${dim}# Install for Copilot globally${reset}
+      npx get-shit-done-cc --copilot --global
+
+      ${dim}# Install for Copilot locally${reset}
+      npx get-shit-done-cc --copilot --local
+
+      ${dim}# Install for Antigravity globally${reset}
+      npx get-shit-done-cc --antigravity --global
+
+      ${dim}# Install for Antigravity locally${reset}
+      npx get-shit-done-cc --antigravity --local
+
+      ${dim}# Install for Cursor globally${reset}
+      npx get-shit-done-cc --cursor --global
+
+      ${dim}# Install for Cursor locally${reset}
+      npx get-shit-done-cc --cursor --local
+
+      ${dim}# Install for Windsurf globally${reset}
+      npx get-shit-done-cc --windsurf --global
+
+      ${dim}# Install for Windsurf locally${reset}
+      npx get-shit-done-cc --windsurf --local
+
+      ${dim}# Install for Augment globally${reset}
+      npx get-shit-done-cc --augment --global
+
+      ${dim}# Install for Augment locally${reset}
+      npx get-shit-done-cc --augment --local
+
+      ${dim}# Install for Trae globally${reset}
+      npx get-shit-done-cc --trae --global
+
+      ${dim}# Install for Trae locally${reset}
+      npx get-shit-done-cc --trae --local
+
+      ${dim}# Install for Hermes Agent globally${reset}
+      npx get-shit-done-cc --hermes --global
+
+      ${dim}# Install for Hermes Agent locally${reset}
+      npx get-shit-done-cc --hermes --local
+
+      ${dim}# Install for Cline locally${reset}
+      npx get-shit-done-cc --cline --local
+
+      ${dim}# Install for CodeBuddy globally${reset}
+      npx get-shit-done-cc --codebuddy --global
+
+      ${dim}# Install for CodeBuddy locally${reset}
+      npx get-shit-done-cc --codebuddy --local
+
+      ${dim}# Install for all runtimes globally${reset}
+      npx get-shit-done-cc --all --global
+
+      ${dim}# Install to custom config directory${reset}
+      npx get-shit-done-cc --kilo --global --config-dir ~/.kilo-work
+
+      ${dim}# Install to current project only${reset}
+      npx get-shit-done-cc --claude --local
+
+      ${dim}# Uninstall GSD from Cursor globally${reset}
+      npx get-shit-done-cc --cursor --global --uninstall
+
+    ${yellow}Notes:${reset}
+      The --config-dir option is useful when you have multiple configurations.
+
+      It takes priority over:
+        CLAUDE_CONFIG_DIR
+        OPENCODE_CONFIG_DIR
+        GEMINI_CONFIG_DIR
+        KILO_CONFIG_DIR
+        CODEX_HOME
+        COPILOT_CONFIG_DIR
+        ANTIGRAVITY_CONFIG_DIR
+        CURSOR_CONFIG_DIR
+        WINDSURF_CONFIG_DIR
+        AUGMENT_CONFIG_DIR
+        TRAE_CONFIG_DIR
+        QWEN_CONFIG_DIR
+        HERMES_HOME
+        CLINE_CONFIG_DIR
+        CODEBUDDY_CONFIG_DIR
+
+      environment variables.
+  `);
   process.exit(0);
 }
 
@@ -9842,10 +10007,11 @@ const runtimeMap = {
   '12': 'opencode',
   '13': 'qwen',
   '14': 'trae',
-  '15': 'windsurf'
+  '15': 'windsurf',
+  '16': 'bob'
 };
-const allRuntimes = ['claude', 'antigravity', 'augment', 'cline', 'codebuddy', 'codex', 'copilot', 'cursor', 'gemini', 'hermes', 'kilo', 'opencode', 'qwen', 'trae', 'windsurf'];
-const ALL_RUNTIMES_OPTION = '16';
+const allRuntimes = ['claude', 'antigravity', 'augment', 'cline', 'codebuddy', 'codex', 'copilot', 'cursor', 'gemini', 'hermes', 'kilo', 'opencode', 'qwen', 'trae', 'windsurf', 'bob'];
+const ALL_RUNTIMES_OPTION = '17';
 
 /**
  * Build the runtime-selection prompt text shown by the interactive installer.
@@ -9868,7 +10034,8 @@ function buildRuntimePromptText() {
   ${cyan}13${reset}) Qwen Code    ${dim}(~/.qwen)${reset}
   ${cyan}14${reset}) Trae         ${dim}(~/.trae)${reset}
   ${cyan}15${reset}) Windsurf     ${dim}(~/.codeium/windsurf)${reset}
-  ${cyan}16${reset}) All
+  ${cyan}16${reset}) Bob          ${dim}(~/.bob)${reset}
+  ${cyan}17${reset}) All
 
   ${dim}Select multiple: 1,2,6 or 1 2 6${reset}
 `;

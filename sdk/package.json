@@ -61,6 +61,7 @@
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.84",
+    "@gsd-build/sdk": "link:",
     "synckit": "^0.11.12",
     "ws": "8.20.1"
   },
